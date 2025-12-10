@@ -72,3 +72,22 @@ export const smartPolishText = async (text: string): Promise<string> => {
     throw error;
   }
 };
+
+export const sendChatMessage = async (message: string): Promise<string> => {
+  if (!apiKey) throw new Error("API Key is missing.");
+
+  try {
+    // Using gemini-3-pro-preview as requested
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-preview',
+      contents: message,
+      config: {
+        systemInstruction: "You are a helpful AI assistant embedded in a Markdown-to-Text conversion app. Answer user questions about the app, regex, markdown, or general topics concisely."
+      }
+    });
+    return response.text || "I couldn't generate a response.";
+  } catch (error) {
+    console.error("Gemini Chat Error:", error);
+    return "Sorry, I encountered an error communicating with the AI service.";
+  }
+};

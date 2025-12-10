@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { parse } from 'marked';
 import { markdownToHuman, getStats } from './utils/regexConverter';
-import { generateSampleMarkdown, smartPolishText } from './services/geminiService';
-import { CopyIcon, TrashIcon, SparklesIcon, RefreshIcon, ArrowRightIcon, MagicWandIcon, PaletteIcon, HelpIcon, XIcon } from './components/Icons';
-import { ToastMessage, ViewMode, Theme } from './types';
+import { generateSampleMarkdown, smartPolishText, sendChatMessage } from './services/geminiService';
+import { CopyIcon, TrashIcon, SparklesIcon, RefreshIcon, ArrowRightIcon, MagicWandIcon, PaletteIcon, HelpIcon, XIcon, MessageCircleIcon, SendIcon, MinimizeIcon } from './components/Icons';
+import { ToastMessage, ViewMode, Theme, ChatMessage } from './types';
 
 // Documentation Modal Component
 const DocsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
@@ -28,10 +28,10 @@ const DocsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     >
       <div 
         ref={modalRef}
-        className="bg-t-bg border border-t-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col"
+        className="bg-t-bg border border-t-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col focus:outline-none"
         tabIndex={-1}
       >
-        <div className="flex items-center justify-between p-6 border-b border-t-border bg-t-surface sticky top-0">
+        <div className="flex items-center justify-between p-6 border-b border-t-border bg-t-surface sticky top-0 z-10">
           <h2 id="docs-title" className="text-xl font-bold text-t-text flex items-center space-x-2">
             <HelpIcon />
             <span>User Guide</span>
@@ -96,7 +96,7 @@ const DocsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           </section>
         </div>
 
-        <div className="p-6 border-t border-t-border bg-t-surface/50 text-center">
+        <div className="p-6 border-t border-t-border bg-t-surface/50 text-center sticky bottom-0 z-10 backdrop-blur-md">
           <button 
             onClick={onClose}
             className="px-6 py-2 bg-t-accent text-white rounded-lg hover:bg-t-accent-hover font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-t-bg focus-visible:ring-t-accent"
@@ -106,6 +106,147 @@ const DocsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         </div>
       </div>
     </div>
+  );
+};
+
+// Chat Widget Component
+const ChatWidget: React.FC = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { id: 'welcome', role: 'model', text: 'Hi! I am the CleanText AI assistant. How can I help you today?', timestamp: Date.now() }
+  ]);
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    if (isOpen) scrollToBottom();
+  }, [messages, isOpen]);
+
+  const handleSend = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    const userMsg: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      text: input,
+      timestamp: Date.now()
+    };
+
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      const responseText = await sendChatMessage(input);
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'model',
+        text: responseText,
+        timestamp: Date.now()
+      };
+      setMessages(prev => [...prev, aiMsg]);
+    } catch (error) {
+      const errorMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'model',
+        text: "Sorry, I'm having trouble connecting right now.",
+        timestamp: Date.now()
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <>
+      {/* Floating Action Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`fixed bottom-6 right-6 z-40 p-4 rounded-full shadow-2xl transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-t-accent ${isOpen ? 'bg-t-surface text-t-text rotate-90 opacity-0 pointer-events-none' : 'bg-t-accent text-white hover:bg-t-accent-hover rotate-0 opacity-100'}`}
+        aria-label="Open Chat"
+      >
+        <MessageCircleIcon />
+      </button>
+
+      {/* Chat Window */}
+      <div 
+        className={`fixed bottom-6 right-6 z-50 w-80 sm:w-96 bg-t-surface border border-t-border rounded-2xl shadow-2xl overflow-hidden flex flex-col transition-all duration-300 origin-bottom-right ${isOpen ? 'scale-100 opacity-100 h-[500px]' : 'scale-90 opacity-0 h-0 pointer-events-none'}`}
+        role="dialog"
+        aria-label="AI Chat Assistant"
+      >
+        {/* Header */}
+        <div className="p-4 border-b border-t-border bg-t-accent text-white flex items-center justify-between shrink-0">
+          <div className="flex items-center space-x-2">
+            <MessageCircleIcon />
+            <span className="font-semibold">AI Assistant</span>
+          </div>
+          <button 
+            onClick={() => setIsOpen(false)}
+            className="p-1 hover:bg-white/20 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            aria-label="Minimize Chat"
+          >
+            <MinimizeIcon />
+          </button>
+        </div>
+
+        {/* Messages Area */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-t-bg" tabIndex={0}>
+          {messages.map((msg) => (
+            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div 
+                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                  msg.role === 'user' 
+                    ? 'bg-t-accent text-white rounded-br-none' 
+                    : 'bg-t-surface-2 border border-t-border text-t-text rounded-bl-none'
+                }`}
+              >
+                {msg.text}
+              </div>
+            </div>
+          ))}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-t-surface-2 border border-t-border text-t-text rounded-2xl rounded-bl-none px-4 py-3">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-t-muted/50 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-t-muted/50 rounded-full animate-bounce delay-75"></div>
+                  <div className="w-2 h-2 bg-t-muted/50 rounded-full animate-bounce delay-150"></div>
+                </div>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input Area */}
+        <form onSubmit={handleSend} className="p-3 bg-t-surface border-t border-t-border shrink-0">
+          <div className="relative flex items-center">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask a question..."
+              className="w-full pl-4 pr-10 py-2.5 bg-t-bg border border-t-border rounded-full text-sm text-t-text focus:outline-none focus:ring-2 focus:ring-t-accent placeholder-t-muted"
+            />
+            <button
+              type="submit"
+              disabled={!input.trim() || isLoading}
+              className="absolute right-1.5 p-1.5 bg-t-accent text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:bg-t-accent-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-t-accent"
+              aria-label="Send Message"
+            >
+              <SendIcon />
+            </button>
+          </div>
+        </form>
+      </div>
+    </>
   );
 };
 
@@ -237,7 +378,7 @@ const App: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col font-sans bg-t-bg text-t-text selection:bg-t-accent/30 transition-colors duration-300">
+    <div className="min-h-screen flex flex-col font-sans bg-t-bg text-t-text selection:bg-t-accent/30 transition-colors duration-300 relative">
       {showDocs && <DocsModal onClose={() => setShowDocs(false)} />}
       
       {/* Header */}
@@ -367,7 +508,7 @@ const App: React.FC = () => {
             <label htmlFor="markdown-input" className="sr-only">Markdown Input Area</label>
             <textarea
               id="markdown-input"
-              className="w-full h-full p-6 bg-transparent resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-t-accent font-mono text-sm leading-relaxed text-t-text placeholder-t-muted"
+              className="w-full h-full p-6 bg-transparent resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-t-accent font-mono text-sm leading-relaxed text-t-text placeholder-t-muted placeholder-opacity-75"
               placeholder="# Paste your Markdown here...&#10;&#10;- We will strip symbols&#10;- And make it readable"
               value={inputMarkdown}
               onChange={(e) => setInputMarkdown(e.target.value)}
@@ -422,7 +563,7 @@ const App: React.FC = () => {
               id="plain-text-output"
               ref={outputRef}
               readOnly
-              className="w-full h-full p-6 bg-transparent resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-t-accent font-sans text-base leading-relaxed text-t-text placeholder-t-muted"
+              className="w-full h-full p-6 bg-transparent resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-t-accent font-sans text-base leading-relaxed text-t-text placeholder-t-muted placeholder-opacity-75"
               placeholder="Clean text will appear here..."
               value={outputText}
             />
@@ -471,9 +612,11 @@ const App: React.FC = () => {
 
       </main>
 
+      <ChatWidget />
+
       {/* Toast Notification Container */}
       <div 
-        className="fixed bottom-6 right-6 flex flex-col space-y-2 z-50 pointer-events-none"
+        className="fixed bottom-6 left-6 flex flex-col space-y-2 z-50 pointer-events-none"
         role="log" 
         aria-live="polite"
       >
