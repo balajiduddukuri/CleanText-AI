@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CleanText AI - Markdown to Human Readable</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+            colors: {
+              t: {
+                bg: 'var(--c-bg)',
+                surface: 'var(--c-surface)',
+                'surface-2': 'var(--c-surface-2)',
+                border: 'var(--c-border)',
+                text: 'var(--c-text)',
+                muted: 'var(--c-text-muted)',
+                accent: 'var(--c-accent)',
+                'accent-hover': 'var(--c-accent-hover)',
+              }
+            }
+          },
+        },
+      }
+    </script>
+    <style>
+      :root {
+        /* Default (Midnight) */
+        --c-bg: #0f172a;
+        --c-surface: #1e293b;
+        --c-surface-2: #020617;
+        --c-border: #334155;
+        --c-text: #f8fafc;
+        --c-text-muted: #94a3b8;
+        --c-accent: #6366f1;
+        --c-accent-hover: #4f46e5;
+      }
+
+      [data-theme='light'] {
+        --c-bg: #f8fafc;
+        --c-surface: #ffffff;
+        --c-surface-2: #f1f5f9;
+        --c-border: #e2e8f0;
+        --c-text: #0f172a;
+        --c-text-muted: #64748b;
+        --c-accent: #4f46e5;
+        --c-accent-hover: #4338ca;
+      }
+
+      [data-theme='ocean'] {
+        --c-bg: #0b1120;
+        --c-surface: #151e32;
+        --c-surface-2: #070b14;
+        --c-border: #1e293b;
+        --c-text: #e2e8f0;
+        --c-text-muted: #93c5fd;
+        --c-accent: #0ea5e9;
+        --c-accent-hover: #0284c7;
+      }
+
+      [data-theme='forest'] {
+        --c-bg: #052e16;
+        --c-surface: #064e3b;
+        --c-surface-2: #022c22;
+        --c-border: #065f46;
+        --c-text: #ecfdf5;
+        --c-text-muted: #6ee7b7;
+        --c-accent: #10b981;
+        --c-accent-hover: #059669;
+      }
+
+      [data-theme='coffee'] {
+        --c-bg: #292524;
+        --c-surface: #44403c;
+        --c-surface-2: #1c1917;
+        --c-border: #57534e;
+        --c-text: #f5f5f4;
+        --c-text-muted: #d6d3d1;
+        --c-accent: #d97706;
+        --c-accent-hover: #b45309;
+      }
+
+      [data-theme='whiteboard'] {
+        --c-bg: #ffffff;
+        --c-surface: #f3f4f6;
+        --c-surface-2: #e5e7eb;
+        --c-border: #d1d5db;
+        --c-text: #111827;
+        --c-text-muted: #6b7280;
+        --c-accent: #2563eb;
+        --c-accent-hover: #1d4ed8;
+      }
+
+      body {
+        background-color: var(--c-bg);
+        color: var(--c-text);
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+
+      /* Custom scrollbar for all elements (Firefox) */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--c-border) var(--c-surface);
+      }
+
+      /* Custom scrollbar for all elements (WebKit) */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      
+      ::-webkit-scrollbar-track {
+        background: var(--c-surface); 
+      }
+      
+      ::-webkit-scrollbar-thumb {
+        background-color: var(--c-border); 
+        border-radius: 4px;
+        border: 2px solid var(--c-surface); /* Creates padding effect */
+      }
+      
+      ::-webkit-scrollbar-thumb:hover {
+        background-color: var(--c-text-muted); 
+      }
+
+      /* Custom Prose Styles for Rendered HTML Preview */
+      .prose-custom h1 { font-size: 1.5em; font-weight: 700; margin-bottom: 0.5em; color: var(--c-text); }
+      .prose-custom h2 { font-size: 1.25em; font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; color: var(--c-text); opacity: 0.9; }
+      .prose-custom h3 { font-size: 1.1em; font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; color: var(--c-text-muted); }
+      .prose-custom p { margin-bottom: 1em; line-height: 1.6; color: var(--c-text); opacity: 0.9; }
+      .prose-custom ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; color: var(--c-text-muted); }
+      .prose-custom ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1em; color: var(--c-text-muted); }
+      .prose-custom li { margin-bottom: 0.25em; }
+      .prose-custom a { color: var(--c-accent); text-decoration: underline; }
+      .prose-custom blockquote { border-left: 4px solid var(--c-border); padding-left: 1em; color: var(--c-text-muted); font-style: italic; margin-bottom: 1em; }
+      .prose-custom code { background-color: var(--c-surface); padding: 0.2em 0.4em; border-radius: 0.25em; font-family: 'JetBrains Mono', monospace; font-size: 0.9em; color: var(--c-text); }
+      .prose-custom pre { background-color: var(--c-surface-2); padding: 1em; border-radius: 0.5em; overflow-x: auto; margin-bottom: 1em; border: 1px solid var(--c-border); }
+      .prose-custom pre code { background-color: transparent; padding: 0; color: var(--c-text); }
+      .prose-custom hr { border-color: var(--c-border); margin: 1.5em 0; }
+      .prose-custom table { width: 100%; border-collapse: collapse; margin-bottom: 1em; }
+      .prose-custom th, .prose-custom td { border: 1px solid var(--c-border); padding: 0.5em; text-align: left; }
+      .prose-custom th { background-color: var(--c-surface); color: var(--c-text); }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.32.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "marked": "https://esm.sh/marked@12.0.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

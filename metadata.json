@@ -1,0 +1,5 @@
+{
+  "name": "CleanText AI",
+  "description": "A professional tool to convert Markdown-formatted LLM output into human-readable plain text using advanced Regex patterns and Gemini AI for semantic polishing.",
+  "requestFramePermissions": []
+}
